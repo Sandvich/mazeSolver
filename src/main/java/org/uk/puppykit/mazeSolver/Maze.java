@@ -5,6 +5,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import static java.lang.Math.abs;
 
 /*
  * A virtual representation of the maze.
@@ -13,7 +14,6 @@ import java.util.Map;
  * 2 is the start point
  * 3 is the end point
  * 4s represent the route taken
- * 5s represent failed routes
  *
  * Note: the start and end points are also stored in the start and end Point objects
  */
@@ -22,6 +22,7 @@ public class Maze {
     private Point size;
     private Point start;
     private Point end;
+    private Point position;
     private Integer[][] walls;
     private Map<Integer, Character> lookup;
 
@@ -45,7 +46,6 @@ public class Maze {
         lookup.put(2,'S');
         lookup.put(3,'E');
         lookup.put(4,'X');
-        lookup.put(5,' ');
 
         // Set start and end points.
         setCell(start, 2);
@@ -86,53 +86,75 @@ public class Maze {
     }
 
     public void solve() {
-        try {
-            solve(start.y, start.x);
-            walls[start.y][start.x] = 2;
-        } catch (StackOverflowError e) {
-            System.out.print("Maze could not be solved in the stack space available!\nThis probably means that it is too big for this algorithm to handle.");
-            System.exit(255);
+        Point cursor = new Point(start.x,start.y);
+        position = new Point(start.x, start.y);
+        Integer MDBest;
+
+        while (cursor.x !=end.x || cursor.y != end.y) {
+            if (!checkProductivePaths(position, cursor, true)) {
+                MDBest = manhattanDistance(end, position);
+                while(!manhattanDistance(position,end).equals(MDBest)) {
+                    // Follow left hand rule
+                    if (!checkProductivePaths(position,cursor,false)) {
+                        while (!manhattanDistance(position, end).equals(MDBest)) {
+                            // Follow right hand rule
+                            if (!checkProductivePaths(position, cursor, false)) {
+                                printMaze("Maze could not be solved\nProgress before exit:");
+                                System.exit(255);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
-    private Boolean solve(Integer y, Integer x) {
-        walls[y][x] = 4;
 
-        if (walls[y][x+1] != 1) {
-            if (walls[y][x+1] == 3) {
-                return true;
-            } else {
-                solve(y, x+1);
+    /*
+     * This function checks each direction from the Point position (using cursor to do so). In each cardinal direction,
+     * it checks if moving one space in that direction would be a 'Productive' move - that is, one which moves it closer
+     * to the end (based on manhattan distance).
+     * If there is a productive move that does not hit a wall and move is true, it makes that move (returning true
+     * regardless of whether or not it was told to make the move). If not, it returns false (so that the algorithm can
+     * try other things).
+     */
+    private Boolean checkProductivePaths(Point position, Point cursor, Boolean move) {
+        //right
+        cursor.x = position.x + 1;
+        cursor.y = position.y;
+        if (!check(cursor, move)){
+            // left
+            cursor.x = position.x - 1;
+            if (!check(cursor, move)){
+                //down
+                cursor.x = position.x;
+                cursor.y = position.y + 1;
+                if (!check(cursor, move)){
+                    //up
+                    cursor.y = position.y - 1;
+                    if (!check(cursor, move)) {
+                        return false;
+                    }
+                }
             }
-        }
-
-        else if (walls[y+1][x] != 1) {
-            if (walls[y+1][x] == 3) {
-                return true;
-            } else {
-                solve(y+1, x);
-            }
-        }
-
-        else if (walls[y][x-1] != 1) {
-            if (walls[y][x-1] == 3) {
-                return true;
-            } else {
-                solve(y, x-1);
-            }
-        }
-
-        else if (walls[y-1][x] != 1) {
-            if (walls[y-1][x] == 3) {
-                return true;
-            } else {
-                solve(y-1, x);
-            }
-        }
-
-        else {
-            walls[y][x] = 5;
-            return false;
         }
         return true;
+    }
+
+    private Boolean check(Point cursor, Boolean move) {
+        if (walls[cursor.y][cursor.x] != 1) {
+            if (manhattanDistance(end, cursor) < manhattanDistance(end, position)) {
+                if (move) {
+                    position.x = cursor.x;
+                    position.y = cursor.y;
+                    walls[position.y][position.x] = 4;
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static Integer manhattanDistance(Point point1, Point point2) {
+        return abs(point1.x - point2.x + point1.y - point2.y);
     }
 }

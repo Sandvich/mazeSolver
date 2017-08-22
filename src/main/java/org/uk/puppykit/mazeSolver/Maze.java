@@ -25,8 +25,10 @@ public class Maze {
         walls = new Integer[size.x][size.y];
         for (Integer i=0; i<size.y; i++) {
             readMazeLine(mazeBuffered.readLine(), walls[i]);
-            System.out.println(Arrays.toString(walls[i]));
         }
+        System.out.println(Arrays.deepToString(walls));
+
+        mazeBuffered.close();
     }
 
     private Point makePoint(String coords) {

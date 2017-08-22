@@ -28,7 +28,7 @@ public class Input {
 
     public FileReader getFile() throws FileNotFoundException, ParseException {
         ParseOpts();
-        System.out.print("Reading in: " + new File(filename).getAbsolutePath() + "\n");
+        System.out.println("Reading in: " + new File(filename).getAbsolutePath());
         FileReader inFile = new FileReader(filename);
         return inFile;
     }

@@ -56,14 +56,15 @@ public class Maze {
     }
 
     private Point makePoint(String coords) {
-        Integer x = Integer.parseInt(coords.substring(0,1));
-        Integer y = Integer.parseInt(coords.substring(2,3));
+        Integer x = Integer.parseInt(coords.split(" ")[0]);
+        Integer y = Integer.parseInt(coords.split(" ")[1]);
         return new Point(x, y);
     }
 
     private void readMazeLine(String line, Integer[] array) {
+        String[] splitline = line.split(" ");
         for (int i=0; i < size.x; i++) {
-            array[i] = Integer.parseInt(line.substring(i*2, i*2+1));
+            array[i] = Integer.parseInt(splitline[i]);
         }
     }
 

@@ -70,3 +70,10 @@ OUTPUT:
 # #  XXXE#
 ##########
 
+Usage
+=====
+
+The solution program is written in Java and requires 1.8 to run.
+It can be run as:
+./solver filename=<name>
+

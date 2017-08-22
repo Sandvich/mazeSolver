@@ -6,7 +6,7 @@ import java.io.IOException;
 
 /*
  * Main class and entry point for the program.
- * Usage:
+ * Usage: filename=<filename>
  */
 
 public class mazeSolver{
@@ -16,9 +16,11 @@ public class mazeSolver{
         FileReader mazeFile = null;
         try {
             mazeFile = inputobj.getFile();
-        } catch (FileNotFoundException | ParseException e) {
-            System.out.print(e.getMessage());
+        } catch (ParseException e) {
+            System.out.println(e.getMessage());
             System.exit(1);
+        } catch (FileNotFoundException e) {
+            System.out.println("File could not be found!");
         }
 
         // Make the maze

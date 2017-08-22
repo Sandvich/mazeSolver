@@ -1,7 +1,8 @@
-package org.uk.puppykit.maze;
+package org.uk.puppykit.mazeSolver;
 import org.apache.commons.cli.*;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileNotFoundException;
 
 public class Input {
@@ -25,15 +26,11 @@ public class Input {
         parser = new DefaultParser();
     }
 
-    public File getFile() throws FileNotFoundException, ParseException {
+    public FileReader getFile() throws FileNotFoundException, ParseException {
         ParseOpts();
-        File inFile = new File(filename);
-
-        if (inFile.exists()) {
-            return inFile;
-        } else {
-            throw new FileNotFoundException("File " + filename + " could not be found!");
-        }
+        System.out.print("Reading in: " + new File(filename).getAbsolutePath() + "\n");
+        FileReader inFile = new FileReader(filename);
+        return inFile;
     }
 
     private void ParseOpts() throws ParseException {

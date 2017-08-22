@@ -8,7 +8,7 @@ should be written to the following specification:
   
   - Arbitrary sized mazes should be handled
   - Valid moves are N, S, E, W (not diagonally)
-  - All org.uk.puppykit.maze.input will be clean, no validation is necessary
+  - All input will be clean, no validation is necessary
   - Any suitable language can be used although one of Java, C#, Python is preferred
   - The maze file format is described below with an example
   - The program should be tested on the sample mazes provided
@@ -29,7 +29,7 @@ Good luck!
 Maze file format
 ================
 
-The org.uk.puppykit.maze.input is a maze description file in plain text.
+The input is a maze description file in plain text.
  1 - denotes walls
  0 - traversable passage way
 

@@ -21,16 +21,22 @@ public class mazeSolver{
             System.exit(1);
         } catch (FileNotFoundException e) {
             System.out.println("File could not be found!");
+            System.exit(1);
         }
 
         // Make the maze
+        Maze maze = null;
         try {
-            Maze maze = new Maze(mazeFile);
+            maze = new Maze(mazeFile);
         } catch (IOException e) {
             System.out.print(e.getMessage());
+            System.exit(1);
         }
+        maze.printMaze("Maze at start:");
 
         // Apply algorithm to solve it
+        maze.solve();
+        maze.printMaze("\nSolution: ");
         // Print output
     }
 }

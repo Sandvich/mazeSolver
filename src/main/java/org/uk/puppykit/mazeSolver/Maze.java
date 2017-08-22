@@ -7,6 +7,13 @@ import java.util.Arrays;
 
 /*
  * A virtual representation of the maze.
+ * 0s represent empty space
+ * 1s represent walls
+ * 2 is the start point
+ * 3 is the end point
+ * 4s represent the route taken
+ *
+ * Note: the start and end points are also stored in the start and end Point objects
  */
 
 public class Maze {
@@ -26,8 +33,13 @@ public class Maze {
         for (Integer i=0; i<size.y; i++) {
             readMazeLine(mazeBuffered.readLine(), walls[i]);
         }
-        System.out.println(Arrays.deepToString(walls));
 
+        // Set start and end points.
+        setCell(start, 2);
+        setCell(end, 3);
+
+        // Cleanup
+        System.out.println(Arrays.deepToString(walls));
         mazeBuffered.close();
     }
 
@@ -41,5 +53,9 @@ public class Maze {
         for (int i=0; i < size.x; i++) {
             array[i] = Integer.parseInt(line.substring(i*2, i*2+1));
         }
+    }
+
+    private void setCell(Point coord, Integer value) {
+        walls[coord.y][coord.x] = value;
     }
 }

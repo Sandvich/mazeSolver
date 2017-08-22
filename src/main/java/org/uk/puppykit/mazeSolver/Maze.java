@@ -11,10 +11,6 @@ public class Maze {
 
     public Maze(FileReader mazeFile) throws IOException {
         BufferedReader mazeBuffered = new BufferedReader(mazeFile);
-        setMetaData(mazeBuffered);
-    }
-
-    private void setMetaData(BufferedReader mazeBuffered) throws IOException {
         size = makePoint(mazeBuffered.readLine());
         start = makePoint(mazeBuffered.readLine());
         end = makePoint(mazeBuffered.readLine());

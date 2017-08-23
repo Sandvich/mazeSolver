@@ -77,3 +77,6 @@ The solution program is written in Java and requires 1.8 to run.
 After compiling, it can be run as:
 ./solver filename=<name>
 
+Note: The program uses the Collision Solver algorithm to run. However, this struggles with large spaces as it generates
+too many nodes for the program to handle. As such, an empty maze will likely crash the program.
+

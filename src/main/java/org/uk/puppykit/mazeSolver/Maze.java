@@ -5,8 +5,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 
-import static java.lang.Math.abs;
-
 /*
  * A virtual representation of the maze.
  * 0s represent empty space
@@ -56,7 +54,7 @@ public class Maze {
         mazeBuffered.close();
     }
 
-    public void printMaze() {
+    private void printMaze() {
         StringBuilder line;
         for (Integer i=0; i<size.y; i++) {
             line = new StringBuilder(size.x);

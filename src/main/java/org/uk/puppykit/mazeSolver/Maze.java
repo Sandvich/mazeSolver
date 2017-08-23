@@ -4,8 +4,8 @@ import java.awt.Point;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+
 import static java.lang.Math.abs;
 
 /*
@@ -15,6 +15,8 @@ import static java.lang.Math.abs;
  * 2 is the start point
  * 3 is the end point
  * 4s represent the route taken
+ * 5s represent dead ends
+ * 6s are wave crests (should not be seen unless debugging)
  *
  * Note: the start and end points are also stored in the start and end Point objects
  */
@@ -48,6 +50,8 @@ public class Maze {
         lookup.put(2,'S');
         lookup.put(3,'E');
         lookup.put(4,'X');
+        lookup.put(5,'O');
+        lookup.put(6,'@');
 
         // Set start and end points.
         setCell(start, 2);
@@ -88,153 +92,115 @@ public class Maze {
     }
 
     /*
-     * The algorithm being used here is known as the maze-routing algorithm. It will always find a path if there is one,
-     * but it will not always find the shortest path. The algorithm itself is explained in the comments
+     * An implementation of the Collision Solver. crests tracks the crest of each wave.
      */
     public void solve() {
-        Vector2D cursor = new Vector2D(start.x, start.y);
-        position = new Vector2D(start.x, start.y);
-        Vector2D MDBestPosition;
-        int MDBest;
-        endVector = new Vector2D(end.x, end.y);
+        List<Point> crests = new ArrayList<>();
+        int[][] editableMaze = new int[size.y][size.x];
+        for (int i=0; i<walls.length; i++) {
+            editableMaze[i] = Arrays.copyOf(walls[i],size.x);
+        }
+        Boolean solved = false;
+        List<Point> paths;
+        List<Point> toRemove = new ArrayList<>();
+        List<Point> toAdd = new ArrayList<>();
+        Point crest;
 
-        // So long as the maze is not solved
-        while (Math.round(cursor.x()) != end.x || Math.round(cursor.y()) != end.y) {
-            // Check if there is a productive path (one which reduces the manhattan distance). If so, take it.
-            if (!checkProductivePaths(position, true)) {
-                // If not, mark this position.
-                MDBest = manhattanDistance(endVector, position);
-                MDBestPosition = new Vector2D((int)position.x(), (int)position.y());
+        crests.add(new Point(start.x, start.y));
 
-                System.out.println("MDBestPosition: " + MDBestPosition.toString());
-                printMaze();
-                // Then use the left hand rule to keep progressing until it either fails or finds its way to a point
-                // which has a lower manhattan distance to the exit than the previous position marked.
-                if (!handRule(MDBest, true)) {
-                    // If this fails, reset to the marked position and try again with the right hand rule.
-                    position = new Vector2D(MDBestPosition.x(), MDBestPosition.y());
-                    if (!handRule(MDBest, false)) {
-                        // If neither works, the algorithm has failed/there is no solution.
-                        printMaze("Maze could not be solved\nProgress before exit:");
-                        System.exit(255);
+        while (!solved && crests.size() != 0) {
+            System.out.println("Current crests: " + crests.toString());
+            for (int i=0; i<crests.size(); i++) {
+                crest = crests.get(i);
+
+                if (crest.x == end.x && crest.y == end.y) {
+                    solved = true;
+
+                } else {
+                    // For each wave crest, check where it can move and move it there (splitting if necessary)
+                    paths = possiblePaths(editableMaze, crest, true);
+                    editableMaze[crest.y][crest.x] = 4;
+                    System.out.println("For crest: " + crest.toString());
+
+                    if (paths.size() == 0) {
+                        System.out.println("No valid spaces to move to.");
+                        editableMaze[crest.y][crest.x] = 5;
+                        // When we find a dead end, follow it backwards marking this as a dead end.
+                        while(possiblePaths(editableMaze, crest, false).size() == 1) {
+                            paths = possiblePaths(editableMaze, crest, false);
+                            System.out.println("Backtracking to: " + paths.toString());
+                            crest.x = paths.get(0).x;
+                            crest.y = paths.get(0).y;
+                            editableMaze[crest.y][crest.x] = 5;
+                        }
+                        toRemove.add(crest);
+                    } else if (paths.size() == 1) {
+                        System.out.println("One valid space to move to: " + paths.get(0).toString());
+                        // Follow path
+                        crest.x = paths.get(0).x;
+                        crest.y = paths.get(0).y;
+                        editableMaze[crest.y][crest.x] = 6;
+                    } else {
+                        System.out.println("Spaces we can move to: " + paths.toString());
+                        // At each junction, split into multiple paths
+                        toAdd.addAll(paths);
+                        toRemove.add(crest);
+                        for (Point path:paths) {
+                            editableMaze[path.y][path.x] = 6;
+                        }
                     }
+
+                    // Check for collisions
                 }
             }
+            crests.removeAll(toRemove);
+            crests.addAll(toAdd);
+            toRemove = new ArrayList<>();
+            toAdd = new ArrayList<>();
+        }
+        StringBuilder line;
+        for (Integer i=0; i<size.y; i++) {
+            line = new StringBuilder(size.x);
+            for (Integer item:editableMaze[i]) {line.append(lookup.get(item));}
+            System.out.println(line.toString());
         }
     }
 
-    /*
-     * This function checks each direction from the Point position (using cursor to do so). In each cardinal direction,
-     * it checks if moving one space in that direction would be a 'Productive' move - that is, one which moves it closer
-     * to the end (based on manhattan distance).
-     * If there is a productive move that does not hit a wall and move is true, it makes that move (returning true
-     * regardless of whether or not it was told to make the move). If not, it returns false (so that the algorithm can
-     * try other things).
-     */
-    private Boolean checkProductivePaths(Vector2D position, Boolean move) {
-        //right
-        Vector2D cursor = new Vector2D(position.x()+1, position.y());
-        if (!check(cursor, move)){
-            // left
-            cursor = cursor.plus(new Vector2D(-2, 0));
-            if (!check(cursor, move)){
-                //down
-                cursor = cursor.plus(new Vector2D(1,1));
-                if (!check(cursor, move)){
-                    //up
-                    cursor = cursor.plus(new Vector2D(0,-2));
-                    if (!check(cursor, move)) {
-                        return false;
-                    }
-                }
-            }
+    private List<Point> possiblePaths(int[][] maze, Point location, boolean forwards) {
+        List<Point> paths;
+        Set<Integer> validSpace = new HashSet<>();
+        if (forwards) {
+            validSpace.add(0);
+            validSpace.add(3);
+            validSpace.add(6);
+        } else {
+            validSpace.add(0);
+            validSpace.add(4);
+            validSpace.add(5);
         }
-        return true;
+
+        paths = possiblePathsCalc(maze, location, validSpace);
+        return paths;
     }
 
-    private Boolean check(Vector2D cursor, Boolean move) {
-        if (walls[(int)cursor.y()][(int)cursor.x()] != 1) {
-            if (manhattanDistance(endVector, cursor) < manhattanDistance(endVector, position)) {
-                if (move) {
-                    position = new Vector2D(cursor.x(), cursor.y());
-                    walls[(int)position.y()][(int)position.x()] = 4;
-                }
-                return true;
-            }
+    private List<Point> possiblePathsCalc(int[][] maze, Point location, Set<Integer> validSpace) {
+        List<Point> paths = new ArrayList<>();
+        // above: test if the space is empty, a wave crest or the end
+        if (validSpace.contains(maze[location.y+1][location.x])) {
+            paths.add(new Point(location.x,location.y+1));
         }
-        return false;
-    }
-
-    public static Integer manhattanDistance(Vector2D point1, Vector2D point2) {
-        return (int)abs(point1.x() - point2.x() + point1.y() - point2.y());
-    }
-
-    private Vector2D handRuleMove(Integer xadd, Integer yadd) {
-        Vector2D prev = new Vector2D(position.x(), position.y());
-        position = position.plus(new Vector2D(xadd, yadd));
-        return prev;
-    }
-
-    /*
-     * This only makes one move, deciding somewhat arbitrarily which way to go. Useful for the first move, as prev ==
-     * position.
-     */
-    private void handRuleFirstMove(Boolean left) {
-        if (left) {
-            if (walls[(int)position.y()][(int)position.x() - 1] != 1) {
-                position = position.plus(new Vector2D(-1, 0));
-            } else if (walls[(int)position.y() + 1][(int)position.x()] != 1) {
-                position = position.plus(new Vector2D(0, 1));
-            } else if (walls[(int)position.y()][(int)position.x() + 1] != 1) {
-                position = position.plus(new Vector2D(1, 0));
-            } else if (walls[(int)position.y() - 1][(int)position.x()] != 1) {
-                position = position.plus(new Vector2D(0, -1));
-            }
-        } else { // Same as above, but starting right
-            if (walls[(int)position.y()][(int)position.x() + 1] != 1) {
-                position = position.plus(new Vector2D(1, 0));
-            } else if (walls[(int)position.y() - 1][(int)position.x()] != 1) {
-                position = position.plus(new Vector2D(0, -1));
-            } else if (walls[(int)position.y()][(int)position.x() - 1] != 1) {
-                position = position.plus(new Vector2D(-1, 0));
-            } else if (walls[(int)position.y() + 1][(int)position.x()] != 1) {
-                position = position.plus(new Vector2D(0, 1));
-            }
+        // below
+        if (validSpace.contains(maze[location.y-1][location.x])) {
+            paths.add(new Point(location.x,location.y-1));
         }
-    }
-
-    private Boolean handRule(Integer MDBest, Boolean left) {
-        Vector2D prev = new Vector2D(position.x(), position.y());
-        Vector2D lastMove;
-        Vector2D cursorLeft;
-        Vector2D cursorForwards;
-        Vector2D cursorRight;
-        while(manhattanDistance(position,endVector) >= MDBest) {
-            lastMove = position.minus(prev);
-            cursorLeft = position.plus(lastMove.rotate(Math.PI * 3/2));
-            cursorForwards = position.plus(lastMove);
-            cursorRight = position.plus(lastMove.rotate(Math.PI/2));
-            System.out.println("Current position: " + position.toString());
-            if (manhattanDistance(prev, position).equals(0)) {
-                handRuleFirstMove(left);
-            } else if (left) {
-                System.out.println("LastMove = " + lastMove.toString());
-                System.out.println("CursorLeft = " + cursorLeft.toString() + ", Valid: " + (walls[(int)cursorLeft.y()][(int)cursorLeft.x()] != 1));
-                System.out.println("CursorForwards = " + cursorForwards.toString() + ", Valid: " + (walls[(int)cursorForwards.y()][(int)cursorForwards.x()]!=1));
-                System.out.println("CursorRight = " + cursorRight.toString() + ", Valid: " + (walls[(int)cursorRight.y()][(int)cursorRight.x()]!=1));
-                // Try going left, then forwards, then right.
-                if (walls[(int)cursorLeft.y()][(int)cursorLeft.x()] != 1) {
-                    prev = handRuleMove((int)lastMove.rotate(Math.PI * 3/2).x(), (int)lastMove.rotate(Math.PI * 3/2).y());
-                } else if (walls[(int)cursorForwards.y()][(int)cursorForwards.x()]!=1) {
-                    prev = handRuleMove((int)lastMove.x(), (int)lastMove.y());
-                } else if (walls[(int)cursorRight.y()][(int)cursorRight.x()]!=1) {
-                    prev = handRuleMove((int)lastMove.rotate(Math.PI/2).x(),(int)lastMove.rotate(Math.PI/2).y());
-                } else { return false; }
-            } else {
-                System.out.println("Ya didn't write the right-hand version, ya doof.");
-                return false;
-            }
+        // left
+        if (validSpace.contains(maze[location.y][location.x-1])) {
+            paths.add(new Point(location.x-1,location.y));
         }
-        return true;
+        // right
+        if (validSpace.contains(maze[location.y][location.x+1])) {
+            paths.add(new Point(location.x+1,location.y));
+        }
+        return paths;
     }
 }

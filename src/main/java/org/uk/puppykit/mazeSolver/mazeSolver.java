@@ -37,6 +37,6 @@ public class mazeSolver{
         // Apply algorithm to solve it
         maze.solve();
         // Print output
-        //maze.printMaze("\nSolution: ");
+        maze.printMaze("\nSolution: ");
     }
 }

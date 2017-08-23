@@ -16,7 +16,8 @@ import static java.lang.Math.abs;
  * 3 is the end point
  * 4s represent the route taken
  * 5s represent dead ends
- * 6s are wave crests (should not be seen unless debugging)
+ * 6s are wave crests
+ * 5 and 6 should not be seen unless debugging, and are only stored in the editableMaze array (in the solve function)
  *
  * Note: the start and end points are also stored in the start and end Point objects
  */
@@ -100,7 +101,6 @@ public class Maze {
         for (int i=0; i<walls.length; i++) {
             editableMaze[i] = Arrays.copyOf(walls[i],size.x);
         }
-        Boolean solved = false;
         List<Point> paths;
         List<Point> toRemove = new ArrayList<>();
         List<Point> toAdd = new ArrayList<>();
@@ -108,40 +108,27 @@ public class Maze {
 
         crests.add(new Point(start.x, start.y));
 
-        while (!solved && crests.size() != 0) {
-            System.out.println("Current crests: " + crests.toString());
+        while (crests.size() != 0) {
             for (int i=0; i<crests.size(); i++) {
                 crest = crests.get(i);
 
                 if (crest.x == end.x && crest.y == end.y) {
-                    solved = true;
+                    toRemove.add(crest);
 
                 } else {
                     // For each wave crest, check where it can move and move it there (splitting if necessary)
                     paths = possiblePaths(editableMaze, crest, true);
                     editableMaze[crest.y][crest.x] = 4;
-                    System.out.println("For crest: " + crest.toString());
 
                     if (paths.size() == 0) {
-                        System.out.println("No valid spaces to move to.");
-                        editableMaze[crest.y][crest.x] = 5;
-                        // When we find a dead end, follow it backwards marking this as a dead end.
-                        while(possiblePaths(editableMaze, crest, false).size() == 1) {
-                            paths = possiblePaths(editableMaze, crest, false);
-                            System.out.println("Backtracking to: " + paths.toString());
-                            crest.x = paths.get(0).x;
-                            crest.y = paths.get(0).y;
-                            editableMaze[crest.y][crest.x] = 5;
-                        }
+                        editableMaze = followBack(crest, editableMaze);
                         toRemove.add(crest);
                     } else if (paths.size() == 1) {
-                        System.out.println("One valid space to move to: " + paths.get(0).toString());
                         // Follow path
                         crest.x = paths.get(0).x;
                         crest.y = paths.get(0).y;
                         editableMaze[crest.y][crest.x] = 6;
                     } else {
-                        System.out.println("Spaces we can move to: " + paths.toString());
                         // At each junction, split into multiple paths
                         toAdd.addAll(paths);
                         toRemove.add(crest);
@@ -158,12 +145,29 @@ public class Maze {
             toRemove = new ArrayList<>();
             toAdd = new ArrayList<>();
         }
-        StringBuilder line;
-        for (Integer i=0; i<size.y; i++) {
-            line = new StringBuilder(size.x);
-            for (Integer item:editableMaze[i]) {line.append(lookup.get(item));}
-            System.out.println(line.toString());
+
+        for (int y=0; y<size.y; y++) {
+            for (int x=0; x<size.x; x++) {
+                if (editableMaze[y][x]==4) {
+                    walls[y][x] = 4;
+                }
+            }
         }
+    }
+
+    private int[][] followBack(Point crest, int[][] maze) {
+        // When we find a dead end, we follow it backwards marking it as a dead end.
+        List<Point> paths;
+
+        maze[crest.y][crest.x] = 5;
+        while(possiblePaths(maze, crest, false).size() == 1) {
+            paths = possiblePaths(maze, crest, false);
+            crest.x = paths.get(0).x;
+            crest.y = paths.get(0).y;
+            maze[crest.y][crest.x] = 5;
+        }
+        maze[crest.y][crest.x] = 4;
+        return maze;
     }
 
     private List<Point> possiblePaths(int[][] maze, Point location, boolean forwards) {
@@ -176,7 +180,6 @@ public class Maze {
         } else {
             validSpace.add(0);
             validSpace.add(4);
-            validSpace.add(5);
         }
 
         paths = possiblePathsCalc(maze, location, validSpace);

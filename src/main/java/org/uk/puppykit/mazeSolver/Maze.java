@@ -1,4 +1,5 @@
 package org.uk.puppykit.mazeSolver;
+import math.geom2d.Vector2D;
 import java.awt.Point;
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -22,8 +23,9 @@ public class Maze {
     private Point size;
     private Point start;
     private Point end;
-    private Point position;
-    private Integer[][] walls;
+    private Vector2D endVector;
+    private Vector2D position;
+    private int[][] walls;
     private Map<Integer, Character> lookup;
 
     public Maze(FileReader mazeFile) throws IOException {
@@ -33,8 +35,8 @@ public class Maze {
         end = makePoint(mazeBuffered.readLine());
 
         // Copy the maze to memory
-        walls = new Integer[size.y][size.x];
-        for (Integer i=0; i<size.y; i++) {
+        walls = new int[size.y][size.x];
+        for (int i=0; i<size.y; i++) {
             readMazeLine(mazeBuffered.readLine(), walls[i]);
         }
 
@@ -61,14 +63,14 @@ public class Maze {
         return new Point(x, y);
     }
 
-    private void readMazeLine(String line, Integer[] array) {
+    private void readMazeLine(String line, int[] array) {
         String[] splitline = line.split(" ");
         for (int i=0; i < size.x; i++) {
             array[i] = Integer.parseInt(splitline[i]);
         }
     }
 
-    private void setCell(Point coord, Integer value) {
+    private void setCell(Point coord, int value) {
         walls[coord.y][coord.x] = value;
     }
 
@@ -85,24 +87,36 @@ public class Maze {
         printMaze();
     }
 
+    /*
+     * The algorithm being used here is known as the maze-routing algorithm. It will always find a path if there is one,
+     * but it will not always find the shortest path. The algorithm itself is explained in the comments
+     */
     public void solve() {
-        Point cursor = new Point(start.x,start.y);
-        position = new Point(start.x, start.y);
-        Integer MDBest;
+        Vector2D cursor = new Vector2D(start.x, start.y);
+        position = new Vector2D(start.x, start.y);
+        Vector2D MDBestPosition;
+        int MDBest;
+        endVector = new Vector2D(end.x, end.y);
 
-        while (cursor.x !=end.x || cursor.y != end.y) {
-            if (!checkProductivePaths(position, cursor, true)) {
-                MDBest = manhattanDistance(end, position);
-                while(!manhattanDistance(position,end).equals(MDBest)) {
-                    // Follow left hand rule
-                    if (!checkProductivePaths(position,cursor,false)) {
-                        while (!manhattanDistance(position, end).equals(MDBest)) {
-                            // Follow right hand rule
-                            if (!checkProductivePaths(position, cursor, false)) {
-                                printMaze("Maze could not be solved\nProgress before exit:");
-                                System.exit(255);
-                            }
-                        }
+        // So long as the maze is not solved
+        while (Math.round(cursor.x()) != end.x || Math.round(cursor.y()) != end.y) {
+            // Check if there is a productive path (one which reduces the manhattan distance). If so, take it.
+            if (!checkProductivePaths(position, true)) {
+                // If not, mark this position.
+                MDBest = manhattanDistance(endVector, position);
+                MDBestPosition = new Vector2D((int)position.x(), (int)position.y());
+
+                System.out.println("MDBestPosition: " + MDBestPosition.toString());
+                printMaze();
+                // Then use the left hand rule to keep progressing until it either fails or finds its way to a point
+                // which has a lower manhattan distance to the exit than the previous position marked.
+                if (!handRule(MDBest, true)) {
+                    // If this fails, reset to the marked position and try again with the right hand rule.
+                    position = new Vector2D(MDBestPosition.x(), MDBestPosition.y());
+                    if (!handRule(MDBest, false)) {
+                        // If neither works, the algorithm has failed/there is no solution.
+                        printMaze("Maze could not be solved\nProgress before exit:");
+                        System.exit(255);
                     }
                 }
             }
@@ -117,20 +131,18 @@ public class Maze {
      * regardless of whether or not it was told to make the move). If not, it returns false (so that the algorithm can
      * try other things).
      */
-    private Boolean checkProductivePaths(Point position, Point cursor, Boolean move) {
+    private Boolean checkProductivePaths(Vector2D position, Boolean move) {
         //right
-        cursor.x = position.x + 1;
-        cursor.y = position.y;
+        Vector2D cursor = new Vector2D(position.x()+1, position.y());
         if (!check(cursor, move)){
             // left
-            cursor.x = position.x - 1;
+            cursor = cursor.plus(new Vector2D(-2, 0));
             if (!check(cursor, move)){
                 //down
-                cursor.x = position.x;
-                cursor.y = position.y + 1;
+                cursor = cursor.plus(new Vector2D(1,1));
                 if (!check(cursor, move)){
                     //up
-                    cursor.y = position.y - 1;
+                    cursor = cursor.plus(new Vector2D(0,-2));
                     if (!check(cursor, move)) {
                         return false;
                     }
@@ -140,13 +152,12 @@ public class Maze {
         return true;
     }
 
-    private Boolean check(Point cursor, Boolean move) {
-        if (walls[cursor.y][cursor.x] != 1) {
-            if (manhattanDistance(end, cursor) < manhattanDistance(end, position)) {
+    private Boolean check(Vector2D cursor, Boolean move) {
+        if (walls[(int)cursor.y()][(int)cursor.x()] != 1) {
+            if (manhattanDistance(endVector, cursor) < manhattanDistance(endVector, position)) {
                 if (move) {
-                    position.x = cursor.x;
-                    position.y = cursor.y;
-                    walls[position.y][position.x] = 4;
+                    position = new Vector2D(cursor.x(), cursor.y());
+                    walls[(int)position.y()][(int)position.x()] = 4;
                 }
                 return true;
             }
@@ -154,7 +165,76 @@ public class Maze {
         return false;
     }
 
-    public static Integer manhattanDistance(Point point1, Point point2) {
-        return abs(point1.x - point2.x + point1.y - point2.y);
+    public static Integer manhattanDistance(Vector2D point1, Vector2D point2) {
+        return (int)abs(point1.x() - point2.x() + point1.y() - point2.y());
+    }
+
+    private Vector2D handRuleMove(Integer xadd, Integer yadd) {
+        Vector2D prev = new Vector2D(position.x(), position.y());
+        position = position.plus(new Vector2D(xadd, yadd));
+        return prev;
+    }
+
+    /*
+     * This only makes one move, deciding somewhat arbitrarily which way to go. Useful for the first move, as prev ==
+     * position.
+     */
+    private void handRuleFirstMove(Boolean left) {
+        if (left) {
+            if (walls[(int)position.y()][(int)position.x() - 1] != 1) {
+                position = position.plus(new Vector2D(-1, 0));
+            } else if (walls[(int)position.y() + 1][(int)position.x()] != 1) {
+                position = position.plus(new Vector2D(0, 1));
+            } else if (walls[(int)position.y()][(int)position.x() + 1] != 1) {
+                position = position.plus(new Vector2D(1, 0));
+            } else if (walls[(int)position.y() - 1][(int)position.x()] != 1) {
+                position = position.plus(new Vector2D(0, -1));
+            }
+        } else { // Same as above, but starting right
+            if (walls[(int)position.y()][(int)position.x() + 1] != 1) {
+                position = position.plus(new Vector2D(1, 0));
+            } else if (walls[(int)position.y() - 1][(int)position.x()] != 1) {
+                position = position.plus(new Vector2D(0, -1));
+            } else if (walls[(int)position.y()][(int)position.x() - 1] != 1) {
+                position = position.plus(new Vector2D(-1, 0));
+            } else if (walls[(int)position.y() + 1][(int)position.x()] != 1) {
+                position = position.plus(new Vector2D(0, 1));
+            }
+        }
+    }
+
+    private Boolean handRule(Integer MDBest, Boolean left) {
+        Vector2D prev = new Vector2D(position.x(), position.y());
+        Vector2D lastMove;
+        Vector2D cursorLeft;
+        Vector2D cursorForwards;
+        Vector2D cursorRight;
+        while(manhattanDistance(position,endVector) >= MDBest) {
+            lastMove = position.minus(prev);
+            cursorLeft = position.plus(lastMove.rotate(Math.PI * 3/2));
+            cursorForwards = position.plus(lastMove);
+            cursorRight = position.plus(lastMove.rotate(Math.PI/2));
+            System.out.println("Current position: " + position.toString());
+            if (manhattanDistance(prev, position).equals(0)) {
+                handRuleFirstMove(left);
+            } else if (left) {
+                System.out.println("LastMove = " + lastMove.toString());
+                System.out.println("CursorLeft = " + cursorLeft.toString() + ", Valid: " + (walls[(int)cursorLeft.y()][(int)cursorLeft.x()] != 1));
+                System.out.println("CursorForwards = " + cursorForwards.toString() + ", Valid: " + (walls[(int)cursorForwards.y()][(int)cursorForwards.x()]!=1));
+                System.out.println("CursorRight = " + cursorRight.toString() + ", Valid: " + (walls[(int)cursorRight.y()][(int)cursorRight.x()]!=1));
+                // Try going left, then forwards, then right.
+                if (walls[(int)cursorLeft.y()][(int)cursorLeft.x()] != 1) {
+                    prev = handRuleMove((int)lastMove.rotate(Math.PI * 3/2).x(), (int)lastMove.rotate(Math.PI * 3/2).y());
+                } else if (walls[(int)cursorForwards.y()][(int)cursorForwards.x()]!=1) {
+                    prev = handRuleMove((int)lastMove.x(), (int)lastMove.y());
+                } else if (walls[(int)cursorRight.y()][(int)cursorRight.x()]!=1) {
+                    prev = handRuleMove((int)lastMove.rotate(Math.PI/2).x(),(int)lastMove.rotate(Math.PI/2).y());
+                } else { return false; }
+            } else {
+                System.out.println("Ya didn't write the right-hand version, ya doof.");
+                return false;
+            }
+        }
+        return true;
     }
 }

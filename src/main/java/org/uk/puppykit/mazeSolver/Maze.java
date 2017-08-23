@@ -136,8 +136,6 @@ public class Maze {
                             editableMaze[path.y][path.x] = 6;
                         }
                     }
-
-                    // Check for collisions
                 }
             }
             crests.removeAll(toRemove);
@@ -158,13 +156,27 @@ public class Maze {
     private int[][] followBack(Point crest, int[][] maze) {
         // When we find a dead end, we follow it backwards marking it as a dead end.
         List<Point> paths;
+        Point secondCrest;
+        paths = possiblePaths(maze, crest, false);
+
+        // If there has been a collision, we set this point to be a wall and then apply the algorithm twice.
+        if (paths.size() == 2) {
+            System.out.println("Collision detected. Marking this point as a wall: " + crest.toString());
+            maze[crest.y][crest.x] = 1;
+            secondCrest = paths.get(0);
+            crest = paths.get(1);
+            System.out.println("Continuing with crests at " + crest.toString() + " and " + secondCrest.toString());
+            maze = followBack(secondCrest, maze);
+            paths = possiblePaths(maze, crest, false);
+        }
 
         maze[crest.y][crest.x] = 5;
-        while(possiblePaths(maze, crest, false).size() == 1) {
-            paths = possiblePaths(maze, crest, false);
+        while (paths.size()==1) {
             crest.x = paths.get(0).x;
             crest.y = paths.get(0).y;
             maze[crest.y][crest.x] = 5;
+            System.out.println("Marked " + crest.toString() + " as a dead end.");
+            paths = possiblePaths(maze, crest, false);
         }
         maze[crest.y][crest.x] = 4;
         return maze;
@@ -178,7 +190,6 @@ public class Maze {
             validSpace.add(3);
             validSpace.add(6);
         } else {
-            validSpace.add(0);
             validSpace.add(4);
         }
 

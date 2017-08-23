@@ -8,11 +8,11 @@ import java.util.List;
 import java.util.Set;
 
 /*
-  * Solves an instance of the Maze class
-  * If debug is turned on, you may see:
-  * 5s, representing dead ends
-  * 6s, representing wave crests
-  */
+ * Solves an instance of the Maze class
+ * If debug is turned on, you may see:
+ * 5s, representing dead ends
+ * 6s, representing wave crests
+ */
 public class Solver {
 
     /*
@@ -94,14 +94,11 @@ public class Solver {
     private static int[][] followBack(Point crest, int[][] maze) {
         // When we find a dead end, we follow it backwards marking it as a dead end.
         java.util.List<Point> paths;
-        java.util.List<Point> crests;
         paths = possiblePaths(maze, crest, false);
 
         // If there has been a collision, we set this point to be a wall and then apply the algorithm multiple times.
         if (paths.size() > 1) {
             maze[crest.y][crest.x] = 1;
-            crests = new ArrayList<>();
-            crests.addAll(paths);
             for (Point path: paths) {
                 maze = followBack(path, maze);
             }

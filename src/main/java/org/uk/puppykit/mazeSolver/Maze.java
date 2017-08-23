@@ -137,6 +137,14 @@ public class Maze {
                         }
                     }
                 }
+                for (Point otherCrest:crests) {
+                    if (crest != otherCrest) {
+                        if (crest.equals(otherCrest)) {
+                            toRemove.add(crest);
+                            editableMaze[crest.y][crest.x] = 1;
+                        }
+                    }
+                }
             }
             crests.removeAll(toRemove);
             crests.addAll(toAdd);
@@ -156,27 +164,28 @@ public class Maze {
     private int[][] followBack(Point crest, int[][] maze) {
         // When we find a dead end, we follow it backwards marking it as a dead end.
         List<Point> paths;
-        Point secondCrest;
+        List<Point> crests;
         paths = possiblePaths(maze, crest, false);
 
-        // If there has been a collision, we set this point to be a wall and then apply the algorithm twice.
-        if (paths.size() == 2) {
+        // If there has been a collision, we set this point to be a wall and then apply the algorithm multiple times.
+        if (paths.size() > 1) {
             System.out.println("Collision detected. Marking this point as a wall: " + crest.toString());
             maze[crest.y][crest.x] = 1;
-            secondCrest = paths.get(0);
-            crest = paths.get(1);
-            System.out.println("Continuing with crests at " + crest.toString() + " and " + secondCrest.toString());
-            maze = followBack(secondCrest, maze);
-            paths = possiblePaths(maze, crest, false);
-        }
-
-        maze[crest.y][crest.x] = 5;
-        while (paths.size()==1) {
-            crest.x = paths.get(0).x;
-            crest.y = paths.get(0).y;
+            crests = new ArrayList<>();
+            crests.addAll(paths);
+            System.out.println("Continuing with crests at " + crests.toString());
+            for (Point path: paths) {
+                maze = followBack(path, maze);
+            }
+        } else {
             maze[crest.y][crest.x] = 5;
-            System.out.println("Marked " + crest.toString() + " as a dead end.");
-            paths = possiblePaths(maze, crest, false);
+            while (paths.size() == 1) {
+                crest.x = paths.get(0).x;
+                crest.y = paths.get(0).y;
+                maze[crest.y][crest.x] = 5;
+                System.out.println("Marked " + crest.toString() + " as a dead end.");
+                paths = possiblePaths(maze, crest, false);
+            }
         }
         maze[crest.y][crest.x] = 4;
         return maze;
